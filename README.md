@@ -1,4 +1,4 @@
-# kaylabranch.com
+# Landing Page
 
 Super simple personal landing page, live at [kaylabranch.com](https://kaylabranch.com).
 
