@@ -1,6 +1,7 @@
 # Landing Page
 
 Super simple personal landing page, live at [kaylabranch.com](https://kaylabranch.com).
+Work in progress. For now, built to see how GitHub hosting works.
 
 ## Stack
 
