@@ -49,83 +49,128 @@
 </body>
 
 <script>
-        const cv=document.getElementById('c'),ctx=cv.getContext('2d');
-        const sEl=document.getElementById('s'),bEl=document.getElementById('b');
-        const W=640,H=220,GY=176;
-        const dark=()=>matchMedia('(prefers-color-scheme: dark)').matches;
-        const OBS=['🌽','🥦','🥕','🍆','🦐','🥚','🐟','🍄', '🥔', '🥬', '🦑'];
-        let best=0;try{best=+localStorage.getItem('pizzarun-best')||0}catch(e){}
-        bEl.textContent=best;
-        let p,obs,speed,score,frames,next,state='ready';
-        function reset(){p={y:GY,vy:0,s:40};obs=[];speed=5;score=0;frames=0;next=60;}
-        reset();
-        function jump(){
-          if(state==='ready'||state==='over'){if(state==='over')reset();state='play';}
-          if(p.y>=GY){p.vy=-13.5;}
-        }
-        addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();if(e.repeat)return;const air=p.y<GY&&state==='play';jump();if(air)boost();}});
-        cv.addEventListener('pointerdown',e=>{e.preventDefault();window.focus();cv.focus({preventScroll:true});const air=p.y<GY&&state==='play';jump();if(air)boost();});
-        let spinT=0,boostN=0,boostDv=0,boosted=false;
-        let parts=[];
-        function splash(x,y){parts=[];for(let i=0;i<34;i++){const a=Math.random()*Math.PI*2,v=2+Math.random()*6;parts.push({x,y,vx:Math.cos(a)*v*1.2-1,vy:Math.sin(a)*v-3,r:2+Math.random()*4,l:1});}}
-        function boost(){if(boosted)return;boosted=true;spinT=1;
-          if(state==='play'){const rise=142-(GY-p.y);if(rise>0){const tv=-Math.sqrt(2*0.75*rise);if(tv<p.vy){boostDv=(tv-p.vy)/5;boostN=5;}}}}
-        let lastKey=0,lastTap=0;
-        function update(){
-          frames++;
-          if(boostN>0){p.vy+=boostDv;boostN--;}
-          p.vy+=0.75;p.y+=p.vy;if(p.y>=GY){p.y=GY;p.vy=0;boostN=0;boosted=false;}
-          speed=5+Math.min(score/250,6);
-          if(--next<=0){
-            const big=score>60&&Math.random()<0.22,e=OBS[Math.random()*OBS.length|0];
-            obs.push(big?{x:W+20,s:40,big:true,e}:{x:W+20,s:34+Math.random()*14|0,e});
-            next=Math.max(38,(55+Math.random()*60)*(5/speed)*1.1)|0;
-          }
-          obs.forEach(o=>o.x-=speed);
-          obs=obs.filter(o=>o.x>-60);
-          score+=speed/10;
-          for(const o of obs){
-            const px=60+8,pw=p.s-16,py=p.y-p.s+8,ph=p.s-14;
-            const ox=o.x+6,ow=o.s-12,oy=o.big?GY-o.s*2+12:GY-o.s+6,oh=o.big?o.s*2-16:o.s-10;
-            if(px<ox+ow&&px+pw>ox&&py<oy+oh&&py+ph>oy){
-              state='over';splash(60+p.s-4,p.y-18);
-              if(score>best){best=Math.floor(score);try{localStorage.setItem('pizzarun-best',best)}catch(e){}bEl.textContent=best;}
-            }
-          }
-          sEl.textContent=Math.floor(score);
-        }
-        function draw(){
-          const d=dark();
-          ctx.fillStyle=d?'#3a2419':'#fffaf0';ctx.fillRect(0,0,W,H);
-          // ground: crust line with dashes
-          ctx.fillStyle=d?'#a8702a':'#c98a3b';ctx.fillRect(0,GY+2,W,6);
-          ctx.fillStyle=d?'#6e4a1c':'#a8702a';
-          for(let x=-(frames*speed)%40;x<W;x+=40)ctx.fillRect(x,GY+14,18,3);
-          ctx.textBaseline='alphabetic';ctx.textAlign='left';
-          // player
-          ctx.save();
-          ctx.font='40px serif';
-          const spin=p.y<GY?Math.min(p.vy/20,0.5):0;
-          const turn=spinT>0?(1-spinT)*Math.PI*2:0;
-          ctx.translate(60+20,p.y-20);ctx.rotate(spin+turn);
-          ctx.fillText('🍕',-20,14);
-          ctx.restore();
-          // obstacles
-          obs.forEach(o=>{ctx.font=o.s+'px serif';if(o.big){for(let i=0;i<2;i++)ctx.fillText(o.e,o.x,GY+4-i*36);}else ctx.fillText(o.e,o.x,GY+4);});
-          ctx.fillStyle=d?'#e0402a':'#c8321f';
-          if(state==='over')[[80,-20,9],[91,-11,6],[71,-9,5]].forEach(([x,y,r])=>{ctx.beginPath();ctx.arc(x,p.y+y,r,0,6.283);ctx.fill();});
-          parts.forEach(q=>{ctx.globalAlpha=Math.max(q.l,0);ctx.beginPath();ctx.arc(q.x,q.y,q.r,0,6.283);ctx.fill();});ctx.globalAlpha=1;
-          if(state==='ready'||state==='over'){
-            ctx.fillStyle=d?'#ffe9c7':'#3a1a0e';ctx.textAlign='center';
-            ctx.font='bold 26px "Trebuchet MS",sans-serif';
-            ctx.fillText(state==='ready'?'Tap or press space to start':'Yucky Topping! Score '+Math.floor(score),W/2,80);
-            if(state==='over'){ctx.font='18px "Trebuchet MS",sans-serif';ctx.fillText('Tap or press space to try again',W/2,110);}
-          }
-        }
-        function loop(){if(state==='play')update();if(spinT>0)spinT=Math.max(0,spinT-0.05);
-          parts.forEach(q=>{q.vy+=0.5;q.x+=q.vx;q.y+=q.vy;q.l-=0.022;if(q.y>GY+8){q.y=GY+8;q.vy=0;q.vx*=0.6;}});parts=parts.filter(q=>q.l>0);
-          draw();requestAnimationFrame(loop);}
-        window.focus();cv.focus({preventScroll:true});
-        loop();
-        </script>
+  const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+  const sEl=document.getElementById('s'),bEl=document.getElementById('b');
+  const W=640,H=220,GY=176;
+  const dark=()=>matchMedia('(prefers-color-scheme: dark)').matches;
+  const OBS=['🌽','🥦','🥕','🍆','🦐','🥚','🐟','🍄','🥔','🥬','🦑'];
+  let best=0;try{best=+localStorage.getItem('pizzarun-best')||0}catch(e){}
+  bEl.textContent=best;
+
+  let p,obs,speed,score,frames,next,state='ready';
+  let splats=[];                                   // cheese splat particles
+  function reset(){p={y:GY,vy:0,s:40};obs=[];splats=[];speed=5;score=0;frames=0;next=60;}
+  reset();
+
+  function jump(){
+    if(state==='ready'||state==='over'){if(state==='over')reset();state='play';}
+    if(p.y>=GY){p.vy=-13.5;}
+  }
+  addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();if(e.repeat)return;const air=p.y<GY&&state==='play';jump();if(air)boost();}});
+  cv.addEventListener('pointerdown',e=>{e.preventDefault();window.focus();cv.focus({preventScroll:true});const air=p.y<GY&&state==='play';jump();if(air)boost();});
+
+  let spinT=0,boostN=0,boostDv=0,boosted=false;
+  let parts=[];
+  function splash(x,y){parts=[];for(let i=0;i<34;i++){const a=Math.random()*Math.PI*2,v=2+Math.random()*6;parts.push({x,y,vx:Math.cos(a)*v*1.2-1,vy:Math.sin(a)*v-3,r:2+Math.random()*4,l:1});}}
+  function boost(){if(boosted)return;boosted=true;spinT=1;
+    if(state==='play'){const rise=142-(GY-p.y);if(rise>0){const tv=-Math.sqrt(2*0.75*rise);if(tv<p.vy){boostDv=(tv-p.vy)/5;boostN=5;}}}}
+
+  // --- cheese splat on a successful landing ---
+  function cheeseSplat(x,y){
+    const n=12+(Math.random()*6|0);
+    for(let i=0;i<n;i++){
+      const a=-Math.PI/2+(Math.random()-0.5)*Math.PI*1.1;   // up and out sideways
+      const v=1.5+Math.random()*3.5;
+      splats.push({x,y,vx:Math.cos(a)*v*1.5,vy:Math.sin(a)*v*0.9,r:1.5+Math.random()*2.5,l:1});
+    }
+    splats.push({x,y,vx:0,vy:0,r:5,l:1,blob:true});        // flat puddle that fades
+  }
+
+  let lastKey=0,lastTap=0;
+  function update(){
+    frames++;
+    if(boostN>0){p.vy+=boostDv;boostN--;}
+    const wasAir=p.y<GY,fallV=p.vy;
+    p.vy+=0.75;p.y+=p.vy;
+    let landed=false;
+    if(p.y>=GY){landed=wasAir&&fallV>2;p.y=GY;p.vy=0;boostN=0;boosted=false;}
+    speed=5+Math.min(score/250,6);
+    if(--next<=0){
+      const big=score>60&&Math.random()<0.22,e=OBS[Math.random()*OBS.length|0];
+      obs.push(big?{x:W+20,s:40,big:true,e}:{x:W+20,s:34+Math.random()*14|0,e});
+      next=Math.max(38,(55+Math.random()*60)*(5/speed)*1.1)|0;
+    }
+    obs.forEach(o=>o.x-=speed);
+    obs=obs.filter(o=>o.x>-60);
+    score+=speed/10;
+    for(const o of obs){
+      const px=60+8,pw=p.s-16,py=p.y-p.s+8,ph=p.s-14;
+      const ox=o.x+6,ow=o.s-12,oy=o.big?GY-o.s*2+12:GY-o.s+6,oh=o.big?o.s*2-16:o.s-10;
+      if(px<ox+ow&&px+pw>ox&&py<oy+oh&&py+ph>oy){
+        state='over';splash(60+p.s-4,p.y-18);
+        if(score>best){best=Math.floor(score);try{localStorage.setItem('pizzarun-best',best)}catch(e){}bEl.textContent=best;}
+      }
+    }
+    if(landed&&state==='play')cheeseSplat(72,GY);          // <-- new
+    sEl.textContent=Math.floor(score);
+  }
+
+  function draw(){
+    const d=dark();
+    ctx.fillStyle=d?'#3a2419':'#fffaf0';ctx.fillRect(0,0,W,H);
+    // ground: crust line with dashes
+    ctx.fillStyle=d?'#a8702a':'#c98a3b';ctx.fillRect(0,GY+2,W,6);
+    ctx.fillStyle=d?'#6e4a1c':'#a8702a';
+    for(let x=-(frames*speed)%40;x<W;x+=40)ctx.fillRect(x,GY+14,18,3);
+
+    // cheese splat (drawn under the pizza)
+    ctx.fillStyle=d?'#ffd15c':'#f2b632';
+    splats.forEach(q=>{
+      ctx.globalAlpha=Math.max(q.l,0);
+      ctx.beginPath();
+      if(q.blob)ctx.ellipse(q.x,q.y,q.r+(1-q.l)*7,Math.max(1,(q.r+(1-q.l)*7)*0.32),0,0,6.283);
+      else ctx.arc(q.x,q.y,q.r,0,6.283);
+      ctx.fill();
+    });
+    ctx.globalAlpha=1;
+
+    ctx.textBaseline='alphabetic';ctx.textAlign='left';
+    // player
+    ctx.save();
+    ctx.font='40px serif';
+    const spin=p.y<GY?Math.min(p.vy/20,0.5):0;
+    const turn=spinT>0?(1-spinT)*Math.PI*2:0;
+    ctx.translate(60+20,p.y-20);ctx.rotate(spin+turn);
+    ctx.fillText('🍕',-20,14);
+    ctx.restore();
+    // obstacles
+    obs.forEach(o=>{ctx.font=o.s+'px serif';if(o.big){for(let i=0;i<2;i++)ctx.fillText(o.e,o.x,GY+4-i*36);}else ctx.fillText(o.e,o.x,GY+4);});
+    ctx.fillStyle=d?'#e0402a':'#c8321f';
+    if(state==='over')[[80,-20,9],[91,-11,6],[71,-9,5]].forEach(([x,y,r])=>{ctx.beginPath();ctx.arc(x,p.y+y,r,0,6.283);ctx.fill();});
+    parts.forEach(q=>{ctx.globalAlpha=Math.max(q.l,0);ctx.beginPath();ctx.arc(q.x,q.y,q.r,0,6.283);ctx.fill();});ctx.globalAlpha=1;
+    if(state==='ready'||state==='over'){
+      ctx.fillStyle=d?'#ffe9c7':'#3a1a0e';ctx.textAlign='center';
+      ctx.font='bold 26px "Trebuchet MS",sans-serif';
+      ctx.fillText(state==='ready'?'Tap or press space to start':'Yucky Topping! Score '+Math.floor(score),W/2,80);
+      if(state==='over'){ctx.font='18px "Trebuchet MS",sans-serif';ctx.fillText('Tap or press space to try again',W/2,110);}
+    }
+  }
+
+  function loop(){
+    if(state==='play')update();
+    if(spinT>0)spinT=Math.max(0,spinT-0.05);
+    parts.forEach(q=>{q.vy+=0.5;q.x+=q.vx;q.y+=q.vy;q.l-=0.022;if(q.y>GY+8){q.y=GY+8;q.vy=0;q.vx*=0.6;}});
+    parts=parts.filter(q=>q.l>0);
+    splats.forEach(q=>{
+      if(q.blob){q.l-=0.045;return;}
+      q.vy+=0.45;q.x+=q.vx;q.y+=q.vy;
+      if(q.y>GY){q.y=GY;q.vy*=-0.25;q.vx*=0.7;if(Math.abs(q.vy)<0.7)q.vy=0;}
+      q.l-=0.02;
+    });
+    splats=splats.filter(q=>q.l>0);
+    draw();requestAnimationFrame(loop);
+  }
+  window.focus();cv.focus({preventScroll:true});
+  loop();
+</script>
 </html>
